@@ -52,27 +52,28 @@ plt.show()
 '''
 import pymongo
 import pandas as pd
-from pprint import pprint
+import matplotlib.pyplot as plt
 conn = pymongo.MongoClient("mongodb://master:stud1234@37.120.249.57:27017/?authSource=daune_leasing&authMechanism=SCRAM-SHA-256")
+print(conn.list_database_names())
 db = conn["daune_leasing"]
-#print(db.list_collection_names())
+print(db.list_collection_names())
 collection = db["clienti_daune"]
-pipeline = [{'$group': {
-    "_id": {"MARCA": "$MARCA",
-            "MODEL": "$MODEL"
-            },
-    "VALOARE_DAUNA": {'$sum': "$VALOARE_DAUNA"},
-    "TOTAL_DAUNE": {'$sum': 1},
 
-}},
-      { '$match': { 'AN_FABRICATIE': {'$in': ['2019','2011','2012']} } }
-]
-# cursor = collection.find({'AN_FABRICATIE': {'$gt': 2010}}, projection = pipeline)
-#df = pd.DataFrame.from_dict(list(cursor))
-#print(df)
-#df.plot(kind='bar', color='green')
+pipeline=[ { '$match': { 'AN_FABRICATIE': {'$in': [2010,2011,2012]} } },
+            {'$group' : {
+           "_id" :{"MARCA":"$MARCA", "MODEL":"$MODEL"} ,
+            "VALOARE_DAUNA": { '$sum': "$VALOARE_DAUNA" },
+            "TOTAL_DAUNE": { '$sum': 1 },
+            }}
+        ]
+cursor = collection.aggregate(pipeline)
+
+df  = pd.DataFrame.from_dict(list(cursor))
+print(df)
+print((df[df['VALOARE_DAUNA'] > 3000]).count())
+df=df[df["TOTAL_DAUNE"] > 100]
+df.plot(kind='bar', color='green')
 '''
-
 # 4. Pe baza colecției clienti_daune din MongoDB, într-un df marca, modelul, anul de fabricație, componenta, prețul total și prețul manoperei pentru autoturismele din mărcile AUDI, BMW, FORD, FIAT. Calculați procentul manoperei din prețul total.
 '''
 import pymongo
@@ -96,45 +97,9 @@ pipeline = [{'$project': {
     {'$match': {'MARCA': {'$in': ['AUDI', 'BMW', 'FORD', 'FIAT']}}},
 ]
 
-# cursor = collection.find({'AN_FABRICATIE': {'$gt': 2010}}, projection=pipeline)
 cursor = collection.aggregate(pipeline)
 df = pd.DataFrame.from_dict(list(cursor))
 df['PROCENT_MANOPERA'] = (df['PRET_MANOPERA'] / df['PRET_TOTAL']) * 100
 pprint(df)
 '''
-# 5. Modificați exemplele 5 și 15 astfel încât tabela T_CLIENTI_DAUNE din MySQL să fie înlocuite cu tabela similară din baza de date Oracle din schema student_ps.
-'''
-import pandas as pd
-import flask
-from flask import request, jsonify
-import json
-import cx_Oracle
-import pymongo
 
-app = flask.Flask(__name__)
-app.config["DEBUG"] = False
-
-
-# home page
-@app.route('/', methods=['GET'])
-def home():
-    return '''<h1>Regasirea clientilor cu daune</h1>
-<p>API pentru afisarea clientilor cu daune.</p>'''
-
-@app.errorhandler(404)
-def page_not_found(e):
-    return "<h1>404</h1><p>The resource could not be found.</p>", 404
-
-# pagina: http://127.0.0.1:5000/api/v1/resources/daune_clienti?suma_solicitata=7000&valoare_dauna=1000
-@app.route('/api/v1/resources/daune_clienti', methods=['GET'])
-def api_daune_clienti():
-    # Verificarea parametrului introdus in URL.
-    #if
-    #else:
-        
-    connection = cx_Oracle.connect("BDSA_POPESCUM", "STUD", "193.226.34.57/oradb")
-    connection.close()
-
-
-app.run()
-'''
